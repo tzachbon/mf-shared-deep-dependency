@@ -47,4 +47,7 @@ module.exports = {
       excludeChunks: ['app1'],
     }),
   ],
+  optimization: {
+    moduleIds: 'named',
+  },
 };

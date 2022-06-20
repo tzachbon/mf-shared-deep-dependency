@@ -1,19 +1,51 @@
-# Advanced API: Startup code
+# Module Federation shared deep dependency issue
 
-This is s basic host remote example, with startup code that sets the remotes public path dynamically.
+This repo tries to reproduce the problem when sharing a dependency that exists in multiple versions across the node modules.
 
-- startup code is merged in with the remoteEntry
-- `app1` is the host application.
-- `app2` standalone application which exposes `Button` component.
+In this example, I use `uuid`.
+```
+└─┬ @startup-code/app1@0.0.0 -> ./app1
+  ├─┬ lib@1.0.0 -> ./lib
+  │ └── uuid@3.4.0
+  ├── uuid@8.3.2
+  └─┬ webpack-dev-server@4.8.1
+    └─┬ sockjs@0.3.24
+      └── uuid@8.3.2 deduped
+```
 
-# Running Demo
+This graph shows that the root `uuid` is 8.3.2 and the version under `lib` is 3.4.0.
 
-Run `yarn build && yarn serve`. This will build and serve both `app1` and `app2` on ports 3001 and 3002 respectively.
-Currently, webpack-dev-server has a bug that incorrectly appends an entrypoint to the end of the remote.
+`lib` uses `v3` method from `uuid`.
+This method exists only in version 8.3.2.
 
-This prevents us from attaching remotes correctly to the internal scope.
+By default, if we build this project, serve it and click on `new uuid`, **everything crashes as expected**:
+![console](./screenshots/uuid-is-not-shared/console.png)
 
-- [localhost:3001](http://localhost:3001/) (HOST)
-- [localhost:3002](http://localhost:3002/) (STANDALONE REMOTE)
+But when we use Module Federation and share this package from `app1` like this:
+```js
+[
+      new ModuleFederationPlugin({
+      name: 'app1',
+      shared: {
+        lib: deps['lib'],
+        uuid: deps['uuid'], // <-- resolve to ^8.3.2
+        react: { singleton: true, requiredVersion: deps.react },
+        'react-dom': { singleton: true, requiredVersion: deps['react-dom'] },
+      },
+    })
+]
+```
 
-<img src="https://ssl.google-analytics.com/collect?v=1&t=event&ec=email&ea=open&t=event&tid=UA-120967034-1&z=1589682154&cid=ae045149-9d17-0367-bbb0-11c41d92b411&dt=ModuleFederationExamples&dp=/StartupCode">
+We can see that the runtime understands the difference between the packages:
+![runtime](./screenshots/uuid-shared/runtime.png)
+
+But when we click on `new uuid` which crashed our app, it works (not the desired behavior)...
+![console](./screenshots/uuid-shared/console.png)
+
+When we look inside the index file we can see the `moduleToHandlerMapping` resolve it incorrectly:
+![moduleToHandlerMapping](./screenshots/uuid-shared/moduleToHandlerMapping.png)
+
+And when we remove the `uuid` entry from the `shared` section in ModuleFederationPlugin we can see that the app behave as expected:
+![console](./screenshots/uuid-is-not-shared/console.png)
+
+For some reason even in explicitly define to be shared with `^8.3.2`, it matches the `3.4.0` version that `lib` consumes.
