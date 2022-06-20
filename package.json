@@ -1,0 +1,18 @@
+{
+  "private": true,
+  "workspaces": [
+    "*"
+  ],
+  "scripts": {
+    "start": "echo \"Dev server currently has bugs with entrypoint ordering. Use 'yarn build && yarn serve' instead.\"",
+    "start:force": "npm run start -ws",
+    "build": "npm run build -ws",
+    "serve:app1": "npm run serve -w app1",
+    "serve": "run-p -l serve:*",
+    "clean": "npm run clean -ws"
+  },
+  "name": "shared-deep-dep",
+  "devDependencies": {
+    "npm-run-all": "^4.1.5"
+  }
+}
