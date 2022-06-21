@@ -1,5 +1,7 @@
 # Module Federation shared deep dependency issue
 
+https://github.com/module-federation/module-federation-examples/issues/2033
+
 This repo tries to reproduce the problem when sharing a dependency that exists in multiple versions across the node modules but resolves the request incorrectly.
 
 In this example, I use `uuid`.
